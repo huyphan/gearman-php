@@ -495,6 +495,19 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oo_gearman_client_do_low_background, 0, 0, 2)
 	ZEND_ARG_INFO(0, unique)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_gearman_client_broadcast_background, 0, 0, 3)
+	ZEND_ARG_INFO(0, client_object)
+	ZEND_ARG_INFO(0, function_name)
+	ZEND_ARG_INFO(0, workload)
+	ZEND_ARG_INFO(0, unique)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oo_gearman_client_broadcast_background, 0, 0, 2)
+	ZEND_ARG_INFO(0, function_name)
+	ZEND_ARG_INFO(0, workload)
+	ZEND_ARG_INFO(0, unique)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_gearman_client_job_status, 0, 0, 2)
 	ZEND_ARG_INFO(0, client_object)
 	ZEND_ARG_INFO(0, job_handle)
@@ -2160,6 +2173,47 @@ PHP_FUNCTION(gearman_client_do_low_background) {
 	RETURN_STRING(job_handle, 0);
 }
 /* }}} */
+
+
+/* {{{ proto string gearman_client_broadcast_background(object client, string function, string workload [, string unique ])
+   Run a task in the background. */
+PHP_FUNCTION(gearman_client_broadcast_background) {
+	zval *zobj;
+	gearman_client_obj *obj;
+	char *function_name;
+	int function_name_len;
+	char *workload;
+	int workload_len;
+	char *unique= NULL;
+	int unique_len= 0;
+	char *job_handle;
+
+	GEARMAN_ZPMP(RETURN_NULL(), "ss|s", &zobj, gearman_client_ce, 
+				 &function_name, &function_name_len, 
+				 &workload, &workload_len, &unique, &unique_len)
+
+	job_handle= emalloc(GEARMAN_JOB_HANDLE_SIZE);
+
+	obj->ret= gearman_client_broadcast_background(&(obj->client), 
+									(char *)function_name, 
+									(char *)unique, (void *)workload, 
+									(size_t)workload_len, job_handle);
+	if (! PHP_GEARMAN_CLIENT_RET_OK(obj->ret)) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s",
+						 gearman_client_error(&(obj->client)));
+		efree(job_handle);
+		RETURN_EMPTY_STRING();
+	}
+
+	if (! job_handle) {
+		efree(job_handle);
+		RETURN_EMPTY_STRING();
+	}
+
+	RETURN_STRING(job_handle, 0);
+}
+/* }}} */
+
 
 /* {{{ proto array gearman_client_job_status(object client, string job_handle)
    Get the status for a backgound job. */
@@ -3935,6 +3989,7 @@ zend_function_entry gearman_functions[] = {
 	PHP_FE(gearman_client_do_background, arginfo_gearman_client_do_background)
 	PHP_FE(gearman_client_do_high_background, arginfo_gearman_client_do_high_background)
 	PHP_FE(gearman_client_do_low_background, arginfo_gearman_client_do_low_background)
+	PHP_FE(gearman_client_broadcast_background, arginfo_gearman_client_broadcast_background)
 	PHP_FE(gearman_client_job_status, arginfo_gearman_client_job_status)
 	PHP_FE(gearman_client_echo, arginfo_gearman_client_echo)
 #if jluedke_0
@@ -4098,6 +4153,7 @@ zend_function_entry gearman_client_methods[]= {
 	__PHP_ME_MAPPING(doBackground, gearman_client_do_background, arginfo_oo_gearman_client_do_background, 0)
 	__PHP_ME_MAPPING(doHighBackground, gearman_client_do_high_background, arginfo_oo_gearman_client_do_high_background, 0)
 	__PHP_ME_MAPPING(doLowBackground, gearman_client_do_low_background, arginfo_oo_gearman_client_do_low_background, 0)
+	__PHP_ME_MAPPING(broadcastBackground, gearman_client_broadcast_background, arginfo_oo_gearman_client_broadcast_background, 0)
 	__PHP_ME_MAPPING(jobStatus, gearman_client_job_status, arginfo_oo_gearman_client_job_status, 0)
 	__PHP_ME_MAPPING(echo, gearman_client_echo, arginfo_oo_gearman_client_echo, 0)
 #if jluedke_0
